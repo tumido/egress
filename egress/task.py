@@ -1,14 +1,14 @@
 """Egress coordinator module."""
-import os
 from datetime import datetime
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 
-CEPH_URL = os.getenv('CEPH_URL')
-CEPH_BUCKET = os.getenv('CEPH_BUCKET')
-CEPH_COLLECTION_NAME = os.getenv('CEPH_COLLECTION_NAME')
-CEPH_ACCESS_KEY_ID = os.getenv('CEPH_ACCESS_KEY_ID')
-CEPH_SECRET_ACCESS_KEY = os.getenv('CEPH_SECRET_ACCESS_KEY')
+from .config import (
+    CEPH_URL, CEPH_BUCKET, CEPH_COLLECTION_NAME,
+    CEPH_ACCESS_KEY_ID, CEPH_SECRET_ACCESS_KEY,
+    DATABASE_URL, DATABASE_OPTIONS,
+    COLLECTIONS
+)
 
 
 def get_local_spark_context():
@@ -23,13 +23,14 @@ def get_local_spark_context():
         .getOrCreate()
 
 
-def fetch_postgres_data(spark_context):
+def fetch_postgres_data(spark_context: SparkSession, table: str) -> DataFrame:
     """Fetch data from internal DB. This data will be pushed to DH."""
+    return spark_context.read.jdbc(
+        DATABASE_URL, table, properties=DATABASE_OPTIONS
+    )
 
-    return []
 
-
-def push_to_ceph(spark_context, data):
+def push_to_ceph(spark_context: SparkSession, data: DataFrame):
     """Convert data to a DataFrame and push it to Ceph storage."""
     day = datetime.now().date().day
     uri = f's3a://{CEPH_BUCKET}/{day}/{CEPH_COLLECTION_NAME}'
@@ -45,6 +46,7 @@ def run_task():
     # Create local spark session to simplify the Parquet works
     spark_context = get_local_spark_context()
     # Fetch data from Postgres
-    data = fetch_postgres_data(spark_context)
+    for table in COLLECTIONS:
+        data = fetch_postgres_data(spark_context, table)
     # Push to Data Hub's Ceph
     push_to_ceph(spark_context, data)
