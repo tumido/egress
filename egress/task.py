@@ -48,5 +48,6 @@ def run_task():
     # Fetch data from Postgres
     for table in COLLECTIONS:
         data = fetch_postgres_data(spark_context, table)
+        data.show()
     # Push to Data Hub's Ceph
-    push_to_ceph(spark_context, data)
+    # push_to_ceph(spark_context, data)
