@@ -6,8 +6,18 @@ from pyspark.sql import SparkSession, DataFrame
 from .config import (
     CEPH_URL, CEPH_BUCKET, CEPH_COLLECTION_NAME,
     CEPH_ACCESS_KEY_ID, CEPH_SECRET_ACCESS_KEY,
-    DATABASE_URL, DATABASE_OPTIONS,
+    DATABASE_HOST, DATABASE_PORT, DATABASE_NAME,
+    DATABASE_USER, DATABASE_PASSWORD,
     COLLECTIONS
+)
+
+JDBC_URL = \
+    f'jdbc:postgresql://{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
+
+JDBC_OPTIONS = dict(
+    user=DATABASE_USER,
+    password=DATABASE_PASSWORD,
+    driver='org.postgresql.Driver'
 )
 
 
@@ -20,13 +30,14 @@ def get_local_spark_context():
         .config('spark.hadoop.fs.s3a.access.key', CEPH_ACCESS_KEY_ID) \
         .config('spark.hadoop.fs.s3a.secret.key', CEPH_SECRET_ACCESS_KEY) \
         .config('spark.hadoop.fs.s3a.endpoint', CEPH_URL) \
+        .config('spark.jars', '/usr/share/java/postgresql-jdbc.jar') \
         .getOrCreate()
 
 
 def fetch_postgres_data(spark_context: SparkSession, table: str) -> DataFrame:
     """Fetch data from internal DB. This data will be pushed to DH."""
     return spark_context.read.jdbc(
-        DATABASE_URL, table, properties=DATABASE_OPTIONS
+        JDBC_URL, table, properties=JDBC_OPTIONS
     )
 
 
