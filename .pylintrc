@@ -351,7 +351,9 @@ good-names=i,
            j,
            k,
            ex,
+           e,
            Run,
+           logger,
            _
 
 # Include a hint for the correct naming format with invalid-name.
