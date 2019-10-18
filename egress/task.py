@@ -7,11 +7,11 @@ from py4j.protocol import Py4JJavaError
 
 from .logging import get_logger
 from .config import (
-    CEPH_URL, CEPH_BUCKET, CEPH_COLLECTION_NAME,
+    CEPH_URL, CEPH_SECURE_BUCKET, CEPH_PUBLIC_BUCKET, CEPH_COLLECTION_NAME,
     CEPH_ACCESS_KEY_ID, CEPH_SECRET_ACCESS_KEY,
     DATABASE_HOST, DATABASE_PORT, DATABASE_NAME,
     DATABASE_USER, DATABASE_PASSWORD,
-    COLLECTIONS
+    SCHEMA
 )
 
 JDBC_URL = \
@@ -105,30 +105,66 @@ def anonymize_data_frame(df: DataFrame, columns: list) -> DataFrame:
     return df
 
 
-    """Convert data to a DataFrame and push it to Ceph storage."""
+def push_to_ceph(df: DataFrame, bucket: str):
+    """
+    Convert data to a DataFrame and push it to Ceph storage.
+
+    Arguments:
+        df (DataFrame): Data table meant to be saved on Ceph
+        bucket (str): Bucket name
+
+    Returns:
+        None
+
+    Raises:
+        Py4JJavaError: Propagates Py4J error when push fails
+    """
     day = datetime.now().date().day
-    uri = f's3a://{CEPH_BUCKET}/{day}/{CEPH_COLLECTION_NAME}'
+    uri = f's3a://{bucket}/{day}/{CEPH_COLLECTION_NAME}'
 
-    data_frame = spark_context.createDataFrame(data)
-
-    return data_frame.write.mode('overwrite').parquet(uri)
+    try:
+        return df.write.mode('overwrite').parquet(uri)
+    except Py4JJavaError as e:
+        logger.error('Failed to push to Data Hub: %s', e, exc_info=True)
+        raise
 
 
 def run_task():
     """Egress coordinator."""
-
-    logger.info(
-        'Job initiated, pulling data from "%s" tables "%s"',
-        JDBC_URL, str(COLLECTIONS)
-    )
+    logger.info('Job initiated', extra=dict(url=JDBC_URL, schema=SCHEMA))
 
     # Create local spark session to simplify the Parquet works
     spark_context = get_local_spark_context()
 
-    for table in COLLECTIONS:
+    for table, sensitive_cols in SCHEMA.items():
         # Fetch data from PostgreSQL
-        data = fetch_postgres_data(spark_context, table)
-        data.show()
+        df = fetch_postgres_data(spark_context, table)
 
-        # Push to Data Hub's Ceph
-        # push_to_ceph(spark_context, data)
+        logger.info(
+            'Table collected',
+            extra=dict(
+                table=table,
+                table_schema=df.schema.json(),
+                table_rows=df.count()
+            )
+        )
+
+        # Push to Data Hub's Ceph - with sensitive data
+        push_to_ceph(df, CEPH_SECURE_BUCKET)
+
+        # Anonymize
+        df = anonymize_data_frame(df, sensitive_cols)
+
+        # Push to Data Hub's Ceph - anonymized
+        push_to_ceph(df, CEPH_PUBLIC_BUCKET)
+
+        logger.info(
+            'Table processed',
+            extra=dict(
+                table=table,
+                table_schema=df.schema.json(),
+                table_rows=df.count()
+            )
+        )
+
+    logger.info('Success', extra=dict(url=JDBC_URL, schema=SCHEMA))
