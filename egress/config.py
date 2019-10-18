@@ -2,6 +2,8 @@
 import os
 import json
 
+os.environ['SPARK_CONF_DIR'] = os.getcwd()
+
 CEPH_URL = os.getenv('CEPH_URL')
 CEPH_SECURE_BUCKET = os.getenv('CEPH_SECURE_BUCKET')
 CEPH_PUBLIC_BUCKET = os.getenv('CEPH_PUBLIC_BUCKET')
