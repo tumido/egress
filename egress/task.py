@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.functions import sha2
 from py4j.protocol import Py4JJavaError
 
 from .logging import get_logger
@@ -83,7 +84,27 @@ def fetch_postgres_data(spark_context: SparkSession, table: str) -> DataFrame:
         raise
 
 
-def push_to_ceph(spark_context: SparkSession, data: DataFrame):
+def anonymize_data_frame(df: DataFrame, columns: list) -> DataFrame:
+    """
+    Replaces sensitive columns data with hashed values.
+
+    Takes `data_frame` and replaces each value in each of `columns` with a
+    hashed value, making the original value unreadable, yet maintains
+    consistency.
+
+    Arguments:
+        df (DataFrame): Data view to be anonymized
+        columns (list): Columns containing sensitive data
+
+    Returns:
+        DataFrame: Modified original dataframe
+    """
+    for column in columns:
+        df = df.withColumn(column, sha2(df[column], 256))
+
+    return df
+
+
     """Convert data to a DataFrame and push it to Ceph storage."""
     day = datetime.now().date().day
     uri = f's3a://{CEPH_BUCKET}/{day}/{CEPH_COLLECTION_NAME}'
