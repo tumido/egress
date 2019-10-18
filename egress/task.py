@@ -1,11 +1,12 @@
 """Egress coordinator module."""
 from datetime import datetime
+import logging
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import sha2
 from py4j.protocol import Py4JJavaError
 
-from .logging import get_logger
+from .logging import init_logging
 from .config import (
     CEPH_URL, CEPH_SECURE_BUCKET, CEPH_PUBLIC_BUCKET, CEPH_COLLECTION_NAME,
     CEPH_ACCESS_KEY_ID, CEPH_SECRET_ACCESS_KEY,
@@ -23,7 +24,8 @@ JDBC_OPTIONS = dict(
     driver='org.postgresql.Driver'
 )
 
-logger = get_logger(__name__)
+init_logging()
+logger = logging.getLogger(__name__)
 
 
 def get_local_spark_context() -> SparkSession:
@@ -78,8 +80,9 @@ def fetch_postgres_data(spark_context: SparkSession, table: str) -> DataFrame:
         )
     except Py4JJavaError as e:
         logger.error(
-            'Failed to read data from "%s" table "%s": %s',
-            JDBC_URL, table, e, exc_info=True
+            'Failed to read data from table: %s', e,
+            extra=dict(url=JDBC_URL, table=table),
+            exc_info=True
         )
         raise
 
@@ -125,7 +128,7 @@ def push_to_ceph(df: DataFrame, bucket: str):
     try:
         return df.write.mode('overwrite').parquet(uri)
     except Py4JJavaError as e:
-        logger.error('Failed to push to Data Hub: %s', e, exc_info=True)
+        logger.error('Failed to push: %s', e, exc_info=True)
         raise
 
 

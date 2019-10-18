@@ -13,6 +13,7 @@ coverage = "*"
 
 [packages]
 pyspark = "*"
+logstash-formatter = "*"
 
 [requires]
 python_version = "3"
