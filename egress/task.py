@@ -122,6 +122,9 @@ def push_to_ceph(df: DataFrame, bucket: str):
     Raises:
         Py4JJavaError: Propagates Py4J error when push fails
     """
+    df.show()
+    return
+
     day = datetime.now().date().day
     uri = f's3a://{bucket}/{day}/{CEPH_COLLECTION_NAME}'
 
