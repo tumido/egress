@@ -8,7 +8,7 @@ from py4j.protocol import Py4JJavaError
 
 from .logging import init_logging
 from .config import (
-    CEPH_URL, CEPH_SECURE_BUCKET, CEPH_PUBLIC_BUCKET, CEPH_COLLECTION_NAME,
+    CEPH_URL, CEPH_SECURE_BUCKET, CEPH_PUBLIC_BUCKET,
     CEPH_ACCESS_KEY_ID, CEPH_SECRET_ACCESS_KEY,
     DATABASE_HOST, DATABASE_PORT, DATABASE_NAME,
     DATABASE_USER, DATABASE_PASSWORD,
@@ -108,12 +108,13 @@ def anonymize_data_frame(df: DataFrame, columns: list) -> DataFrame:
     return df
 
 
-def push_to_ceph(df: DataFrame, bucket: str):
+def push_to_ceph(df: DataFrame, table: str, bucket: str):
     """
     Convert data to a DataFrame and push it to Ceph storage.
 
     Arguments:
         df (DataFrame): Data table meant to be saved on Ceph
+        table (str): Table name used as a collection identifier
         bucket (str): Bucket name
 
     Returns:
@@ -126,7 +127,7 @@ def push_to_ceph(df: DataFrame, bucket: str):
     return
 
     day = datetime.now().date().day
-    uri = f's3a://{bucket}/{day}/{CEPH_COLLECTION_NAME}'
+    uri = f's3a://{bucket}/{day}/{table}'
 
     try:
         return df.write.mode('overwrite').parquet(uri)
