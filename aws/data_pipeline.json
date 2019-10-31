@@ -1,0 +1,113 @@
+{
+  "objects": [
+    {
+      "myComment" : "Activity to copy from source RDS to S3 path.",
+      "output": {
+        "ref": "S3DataNode"
+      },
+      "input": {
+        "ref": "RDS_table"
+      },
+      "name": "RDSToS3CopyActivity",
+      "id": "RDSToS3CopyActivity",
+      "runsOn": {
+        "ref": "Ec2Instance"
+      },
+      "type": "CopyActivity"
+    },
+    {
+      "myComment" : "S3 path, where the data will be stored.",
+      "directoryPath": "#{my_S3_path}/#{my_RDS_table_name}/#{format(@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}",
+      "name": "S3DataNode",
+      "id": "S3DataNode",
+      "type": "S3DataNode"
+    },
+    {
+      "myComment" : "Your Ec2 resource to run your pipeline activities.",
+      "instanceType": "m3.medium",
+      "name": "Ec2Instance",
+      "id": "Ec2Instance",
+      "type": "Ec2Resource",
+      "terminateAfter": "2 Hours"
+    },
+    {
+      "myComment" : "Your source RDS DB details.",
+      "connectionString": "#{my_RDS_jdbc}",
+      "username": "#{my_RDS_username}",
+      "*password": "#{*my_RDS_password}",
+      "name": "RDS_database",
+      "id": "RDS_database",
+      "jdbcProperties": [
+        "allowMultiQueries=true",
+        "tcpKeepAlive=true"
+      ],
+      "type": "JdbcDatabase",
+      "jdbcDriverClass": "org.postgresql.Driver"
+    },
+    {
+      "myComment" : "Default Pipeline object that defines IAM roles, pipeline log bucket path and Schedule.",
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "#{my_S3_logs}",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    },
+    {
+      "myComment" : "Your source RDS table details",
+      "database": {
+        "ref": "RDS_database"
+      },
+      "name": "RDS_table",
+      "id": "RDS_table",
+      "type": "SqlDataNode",
+      "table": "#{my_RDS_table_name}",
+      "selectQuery": "select * from #{table}"
+    }
+  ],
+  "parameters": [
+    {
+      "id": "*my_RDS_password",
+      "description": "RDS password",
+      "type": "String"
+    },
+    {
+      "id": "my_RDS_username",
+      "description": "RDS username",
+      "type": "String"
+    },
+    {
+      "id": "my_RDS_table_name",
+      "description": "RDS table name",
+      "type": "String"
+    },
+    {
+      "id": "my_RDS_jdbc",
+      "description": "RDS connection string",
+      "watermark": "jdbc:postgresql://dbinstance.id.region.rds.amazonaws.com:5432/dbname",
+      "type": "String"
+    },
+    {
+      "id": "my_S3_path",
+      "description": "S3 folder",
+      "helpText": "The S3 folder to store RDS table data.",
+      "type": "AWS::S3::ObjectKey"
+    },
+    {
+      "id": "my_S3_logs",
+      "description": "S3 logs folder",
+      "helpText": "The S3 folder to store logs.",
+      "watermark": "s3://testbucket/logs/",
+      "type": "AWS::S3::ObjectKey"
+    }
+  ],
+  "values": {
+    "my_RDS_username": "",
+    "*my_RDS_password": "",
+    "my_RDS_jdbc": "",
+    "my_RDS_table_name": "",
+    "my_S3_path": "",
+    "my_S3_logs": ""
+  }
+}

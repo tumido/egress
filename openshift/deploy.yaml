@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: egress-cronjob-template
+  annotations:
+    openshift.io/display-name: "Data Egress"
+    description: "Data egress to Data Hub"
+    tags: "python,spark"
+    iconClass: "icon-python"
+    openshift.io/long-description: "This template defines resources needed to run and deploy and run the Egress job."
+    openshift.io/provider-display-name: "Red Hat, Inc."
+objects:
+- kind: CronJob
+  apiVersion: batch/v1beta1
+  metadata:
+    name: egress-cj
+    labels:
+      app: egress
+  spec:
+    schedule: "@daily"
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: egress
+              image: minio/mc
+              command: ["/bin/sh", "-c"]
+              args:
+              - mc --config-dir /tmp/mc config host add input $INPUT_URL $INPUT_ACCESS_KEY_ID $INPUT_SECRET_ACCESS_KEY;
+                mc --config-dir /tmp/mc config host add output $OUTPUT_URL $OUTPUT_ACCESS_KEY_ID $OUTPUT_SECRET_ACCESS_KEY;
+                mc --config-dir /tmp/mc mirror input/$INPUT_PATH output/$OUTPUT_PATH;
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 2Gi
+                requests:
+                  cpu: 250m
+                  memory: 1Gi
+              env:
+              - name: INPUT_URL
+                valueFrom:
+                  secretKeyRef:
+                    key: url
+                    name: egress-input
+                    optional: false
+              - name: INPUT_PATH
+                valueFrom:
+                  secretKeyRef:
+                    key: path
+                    name: egress-input
+                    optional: false
+              - name: INPUT_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    key: access-key-id
+                    name: egress-input
+                    optional: false
+              - name: INPUT_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    key: secret-access-key
+                    name: egress-input
+                    optional: false
+              - name: OUTPUT_URL
+                valueFrom:
+                  secretKeyRef:
+                    key: url
+                    name: egress-output
+                    optional: false
+              - name: OUTPUT_PATH
+                valueFrom:
+                  secretKeyRef:
+                    key: path
+                    name: egress-output
+                    optional: false
+              - name: OUTPUT_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    key: access-key-id
+                    name: egress-output
+                    optional: false
+              - name: OUTPUT_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    key: secret-access-key
+                    name: egress-output
+                    optional: false

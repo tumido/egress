@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: egress-setup-template
+  annotations:
+    description: "Data egress configuration - I/O credentials"
+objects:
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: egress-input
+  type: Opaque
+  data:
+    url: dXJsCg==
+    path: YnVja2V0Cg==
+    access-key-id: eHh4Cg==
+    secret-access-key: eHh4Cg==
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: egress-output
+  type: Opaque
+  data:
+    url: dXJsCg==
+    path: YnVja2V0Cg==
+    access-key-id: eHh4Cg==
+    secret-access-key: eHh4Cg==
