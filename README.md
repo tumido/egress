@@ -105,12 +105,34 @@ $ oc create secret generic egress-output \
     --from-literal=secret-access-key=<CREDENTIALS>
 ```
 
+Please note the `S3_ENDPOINT` refers to the S3 host. For example:
+
+- AWS S3 service: `https://s3.amazonaws.com`
+- Google Cloud Storage: `https://storage.googleapis.com`
+- etc..
+
+The `S3_PATH` denotes the path for a bucket or its subfolder:
+
+- It can be simply a bucket name: `my_bucket`
+- It can also be a relative path to a folder within this bucket `my_bucket/folder_in_top_level/target_folder`
+
 ### Step 2: Deploy Egress Cron job
 
 And finally, deploy the Kubernetes cron job. This job uses a [MinIO client](https://docs.min.io/docs/minio-client-quickstart-guide.html) and performs a `mirror` operation to sync S3 bucket to Ceph. Both input and output urls and paths are determined based on the secrets from previous step.
 
 ```sh
 $ oc process -f openshift/deploy.yaml | oc create -f -
+```
+
+### Run
+
+The `openshift/deploy.yaml` describes a cron job. By default this job is set to run daily. Once this job is executed, you should receive log containing all the synced files:
+
+```
+Added `input` successfully.
+Added `output` successfully.
+`input/ladas-report-test/tcoufal_test/input/sample.csv` -> `output/ladas-report-test/tcoufal_test/output/sample.csv`
+Total: 18 B, Transferred: 18 B, Speed: 159 B/s
 ```
 
 ## License
