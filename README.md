@@ -43,19 +43,19 @@ First, [create](https://docs.aws.amazon.com/cli/latest/reference/datapipeline/cr
 $ aws datapipeline create-pipeline --name data_egress --unique-id <TOKEN>
 ```
 
-Next, populate it from attached template
+Next, populate it from attached template (and [yes](https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-custom-templates.html#add-pipeline-variables), AWS Data pipelines requires the variable names to start with `my`)
 
 ```sh
 $ aws datapipeline put-pipeline-definition
     --pipeline-definition file:/`pwd`/aws/data_pipeline.json \
     --pipeline-id <PIPELINE_ID> \
     --parameter-values \
-        RDS_username=<DB_USERNAME> \
-        RDS_password=<DB_PASSWORD> \
-        RDS_jdbc=<jdbc:postgresql://dbinstance.id.region.rds.amazonaws.com:5432/dbname> \
-        RDS_table_name=<COLLECTION_NAME> \
-        S3_path=<S3_BUCKET_PATH_FOR_OUTPUT_DATA> \
-        S3_logs=<S3_LOGS_PATH>
+        my_RDS_username=<DB_USERNAME> \
+        my_RDS_password=<DB_PASSWORD> \
+        my_RDS_jdbc=<jdbc:postgresql://dbinstance.id.region.rds.amazonaws.com:5432/dbname> \
+        my_RDS_table_name=<COLLECTION_NAME> \
+        my_S3_path=<S3_BUCKET_PATH_FOR_OUTPUT_DATA> \
+        my_S3_logs=<S3_LOGS_PATH>
 ```
 
 Now activate the pipeline
