@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: egress-setup-template
+  name: egress-step2-secrets-template
   annotations:
     description: "Data egress configuration - I/O credentials"
 objects:

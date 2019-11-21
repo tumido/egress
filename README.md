@@ -20,6 +20,9 @@ Outward facing intermediate storage in the project is a necessity. Please set up
 
 ```sh
 $ aws s3api create-bucket --bucket <BUCKET_NAME>
+{
+    "Location": "/<BUCKET_NAME>"
+}
 
 $ aws s3api put-bucket-lifecycle-configuration  \
     --bucket <BUCKET_NAME>  \
@@ -40,6 +43,8 @@ The job assumes you have a PostgreSQL secret `postgresql` available in your Open
 $ oc create secret generic aws \
     --from-literal=access-key-id=<CREDENTIALS>
     --from-literal=secret-access-key=<CREDENTIALS>
+
+secret/aws created
 ```
 
 Both these secrets are described in the `setup.yaml` as well.
@@ -53,6 +58,10 @@ $ oc process -f openshift-crc/deploy.yaml \
     -p PGHOST=<PostgreSQL hostname (default: postgresql)> \
     -p PGPORT=<PostgreSQL port (default: 5432)> \
   | oc create -f -
+
+buildconfig.build.openshift.io/egress-bc created
+imagestream.image.openshift.io/egress-is created
+cronjob.batch/egress-cj created
 ```
 
 As a result a cron job is defined. It is set to run daily. On each run it would collect each table from `TABLES` in your database and save it as a `<table>.csv.gz` in `s3://bucket/path/<DATE>/`.
@@ -74,11 +83,15 @@ $ oc create secret generic egress-input \
     --from-literal=access-key-id=<CREDENTIALS>
     --from-literal=secret-access-key=<CREDENTIALS>
 
+secret/egress-input created
+
 $ oc create secret generic egress-output \
     --from-literal=url=<S3_ENDPOINT>
     --from-literal=path=<S3_PATH>
     --from-literal=access-key-id=<CREDENTIALS>
     --from-literal=secret-access-key=<CREDENTIALS>
+
+secret/egress-output created
 ```
 
 Please note the `S3_ENDPOINT` refers to the S3 host. For example:
@@ -98,6 +111,8 @@ And finally, deploy the Kubernetes cron job. This job uses a [MinIO client](http
 
 ```sh
 $ oc process -f openshift-dh/deploy.yaml | oc create -f -
+
+cronjob.batch/egress-cj created
 ```
 
 ### Run
@@ -105,10 +120,12 @@ $ oc process -f openshift-dh/deploy.yaml | oc create -f -
 The `openshift-dh/deploy.yaml` describes a cron job. By default this job is set to run daily. Once this job is executed, you should receive log containing all the synced files:
 
 ```
+oc log
 Added `input` successfully.
 Added `output` successfully.
-`input/ladas-report-test/tcoufal_test/input/sample.csv` -> `output/ladas-report-test/tcoufal_test/output/sample.csv`
-Total: 18 B, Transferred: 18 B, Speed: 159 B/s
+`input/tcoufal/2019-11-21/subscription_capacity.csv.gz` -> `output/DH-SECURE-USIR/2019-11-21/subscription_capacity.csv.gz`
+`input/tcoufal/2019-11-21/tally_snapshots.csv.gz` -> `output/DH-SECURE-USIR/2019-11-21/tally_snapshots.csv.gz`
+Total: 17.38 MiB, Transferred: 17.38 MiB, Speed: 18.77 MiB/s
 ```
 
 ## License

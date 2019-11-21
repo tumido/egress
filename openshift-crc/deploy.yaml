@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: egress-step1-cronjob-template
+  name: egress-step1-template
   annotations:
     openshift.io/display-name: "Data Egress"
     description: "Data egress - data to intermediate store"
@@ -67,7 +67,7 @@ objects:
   metadata:
     labels:
       app: egress
-    name: egress-step1-cj
+    name: egress-cj
   spec:
     schedule: "@daily"
     jobTemplate:
@@ -76,7 +76,7 @@ objects:
           spec:
             restartPolicy: Never
             containers:
-            - name: egress-step1-cj
+            - name: egress-cj
               image: egress-is
               command: ["/bin/sh", "-c"]
               args:

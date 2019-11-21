@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: egress-cronjob-template
+  name: egress-step2-template
   annotations:
     openshift.io/display-name: "Data Egress"
-    description: "Data egress to Data Hub"
+    description: "Data egress - S3 sync job"
     openshift.io/provider-display-name: "Red Hat, Inc."
 objects:
 - kind: CronJob
@@ -21,7 +21,7 @@ objects:
           spec:
             restartPolicy: Never
             containers:
-            - name: egress
+            - name: egress-cj
               image: minio/mc
               command: ["/bin/sh", "-c"]
               args:
