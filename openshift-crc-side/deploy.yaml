@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: egress-step1-cronjob-template
+  annotations:
+    openshift.io/display-name: "Data Egress"
+    description: "Data egress - data to intermediate store"
+    openshift.io/provider-display-name: "Red Hat, Inc."
+
+parameters:
+- name: S3_OUTPUT
+  description: S3 path to intermediate storage
+  value: s3://bucket_name/optional_path
+- name: TABLES
+  description: Space separated list of tables to dump
+  value: table1 table2
+- name: PGHOST
+  description: Database hostname
+  value: postgresql
+- name: PGPORT
+  description: Database port
+  value: 5432
+
+objects:
+- kind: BuildConfig
+  apiVersion: build.openshift.io/v1
+  metadata:
+    labels:
+      app: egress
+    name: egress-bc
+  spec:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    output:
+      to:
+        kind: ImageStreamTag
+        name: egress:latest
+    source:
+      dockerfile: |-
+        FROM python:latest
+        USER root
+        RUN yum update -y && yum install postgres -y && yum clean all -y
+        RUN pip install --no-cache-dir aws-cli
+        USER 1001
+    strategy:
+      type: Docker
+    triggers:
+    - type: ConfigChange
+- kind: ImageStream
+  apiVersion: image.openshift.io/v1
+  metadata:
+    labels:
+      app: egress
+    name: egress-is
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - from:
+        kind: DockerImage
+        name: egress:latest
+      name: latest
+- kind: CronJob
+  apiVersion: batch/v1beta1
+  metadata:
+    labels:
+      app: egress
+    name: egress-step1-cj
+  spec:
+    schedule: "@daily"
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: egress-step1-cj
+              image: egress
+              command: ["/bin/sh", "-c"]
+              args:
+              - set -e;
+                for table in $TABLES; do
+                  psql -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE -c "COPY $table TO STDOUT WITH CSV HEADER" |
+                  gzip -9 |
+                  aws s3 cp - ${S3_OUTPUT}/$(date -I)/${table}.csv.gz;
+                done
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 2Gi
+                requests:
+                  cpu: 250m
+                  memory: 1Gi
+              env:
+              - name: PGUSER
+                valueFrom:
+                  secretKeyRef:
+                    key: database-user
+                    name: postgresql
+                    optional: false
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    key: database-password
+                    name: postgresql
+                    optional: false
+              - name: PGDATABASE
+                valueFrom:
+                  secretKeyRef:
+                    key: database-name
+                    name: postgresql
+                    optional: false
+              - name: PGHOST
+                value: PGHOST
+              - name: PGPORT
+                value: PGPORT
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    key: access-key-id
+                    name: aws
+                    optional: false
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    key: secret-access-key
+                    name: aws
+                    optional: false
+              - name: S3_OUTPUT
+                value: ${S3_OUTPUT}
+              - name: TABLES
+                value: ${TABLES}

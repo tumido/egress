@@ -32,7 +32,7 @@ To limit the data stored in this bucket, you can modify the object lifecycle
 ```sh
 $ aws s3api put-bucket-lifecycle-configuration  \
     --bucket <BUCKET_NAME>  \
-    --lifecycle-configuration file:/`pwd`/aws/bucket_lifecycle.json
+    --lifecycle-configuration file:/`pwd`/aws-datapipelines/bucket_lifecycle.json
 ```
 
 ### Step 2: Create the data egress pipeline
@@ -47,7 +47,7 @@ Next, populate it from attached template (and [yes](https://docs.aws.amazon.com/
 
 ```sh
 $ aws datapipeline put-pipeline-definition
-    --pipeline-definition file:/`pwd`/aws/data_pipeline.json \
+    --pipeline-definition file:/`pwd`/aws-datapipelines/data_pipeline.json \
     --pipeline-id <PIPELINE_ID> \
     --parameter-values \
         my_RDS_username=<DB_USERNAME> \
