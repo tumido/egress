@@ -27,7 +27,7 @@ objects:
               args:
               - mc --config-dir /tmp/mc config host add input $INPUT_URL $INPUT_ACCESS_KEY_ID $INPUT_SECRET_ACCESS_KEY;
                 mc --config-dir /tmp/mc config host add output $OUTPUT_URL $OUTPUT_ACCESS_KEY_ID $OUTPUT_SECRET_ACCESS_KEY;
-                mc --config-dir /tmp/mc mirror input/$INPUT_PATH output/$OUTPUT_PATH;
+                mc --config-dir /tmp/mc mirror --overwrite input/$INPUT_PATH output/$OUTPUT_PATH;
               resources:
                 limits:
                   cpu: 500m

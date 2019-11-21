@@ -19,7 +19,7 @@ parameters:
   value: postgresql
 - name: PGPORT
   description: Database port
-  value: 5432
+  value: "5432"
 
 objects:
 - kind: BuildConfig
@@ -36,13 +36,13 @@ objects:
     output:
       to:
         kind: ImageStreamTag
-        name: egress:latest
+        name: egress-is:latest
     source:
       dockerfile: |-
-        FROM python:latest
+        FROM centos/python-36-centos7:latest
         USER root
-        RUN yum update -y && yum install postgres -y && yum clean all -y
-        RUN pip install --no-cache-dir aws-cli
+        RUN yum update -y && yum install postgresql -y && yum clean all -y
+        RUN pip install --no-cache-dir awscli
         USER 1001
     strategy:
       type: Docker
@@ -56,11 +56,11 @@ objects:
     name: egress-is
   spec:
     lookupPolicy:
-      local: false
+      local: true
     tags:
     - from:
         kind: DockerImage
-        name: egress:latest
+        name: egress-is:latest
       name: latest
 - kind: CronJob
   apiVersion: batch/v1beta1
@@ -77,15 +77,19 @@ objects:
             restartPolicy: Never
             containers:
             - name: egress-step1-cj
-              image: egress
+              image: egress-is
               command: ["/bin/sh", "-c"]
               args:
-              - set -e;
+              - >-
+                set -e;
                 for table in $TABLES; do
+                  echo "Table '${table}': Data collection started.";
                   psql -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE -c "COPY $table TO STDOUT WITH CSV HEADER" |
                   gzip -9 |
                   aws s3 cp - ${S3_OUTPUT}/$(date -I)/${table}.csv.gz;
-                done
+                  echo "Table '${table}': Dump uploaded to intermediate storage.";
+                done;
+                echo "Success.";
               resources:
                 limits:
                   cpu: 500m
@@ -113,9 +117,9 @@ objects:
                     name: postgresql
                     optional: false
               - name: PGHOST
-                value: PGHOST
+                value: ${PGHOST}
               - name: PGPORT
-                value: PGPORT
+                value: ${PGPORT}
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
