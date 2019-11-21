@@ -7,62 +7,65 @@ Data egress service is intended to export data from Amazon RDS to Data Hub on re
 ## Process Overview
 
 1. Input data are expected to be located in a Amazon RDS, presumably PostgreSQL.
-2. An Amazon Data Pipeline is created. This pipeline snapshots the database into Amazon S3 as CSV dumps. Each synchronized table requires a separate pipeline.
-3. S3 is synchronized to Ceph via CronJob.
+2. OpenShift `CronJob` on the application cluster side snapshots the database into Amazon S3 as CSV dumps.
+3. OpenShift `CronJob` on the target network side synchronizes S3 to Ceph.
 
-## Data pipeline
+## Prerequisites
 
-This section explains how to deploy a [data pipeline](https://aws.amazon.com/datapipeline/) that outputs content of a table in RDS database to an S3 bucket. It provides the [pipeline definition file](http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-writing-pipeline-definition.html) which is used to create the pipeline and the AWS CLI commands for creating and executing the pipeline.
-
-### Prerequisites
+Outward facing intermediate storage in the project is a necessity. Please set up an S3 bucket:
 
 1. You must have the [AWS CLI](https://github.com/aws/aws-cli) installed and configured.
-2. Your database must be accessible from a region where AWS data pipelines [are available](https://aws.amazon.com/about-aws/whats-new/2014/02/20/aws-data-pipeline-now-available-in-four-new-regions/).
-
-### Step 1: Create and setup S3 bucket
-
-Before we can start with the pipeline, you need to have S3 bucket with write permissions set up. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket of follow this guide. If you choose to provide your own S3 path to an existing bucket, the bucket must be in the same region as what is set for your AWS CLI configuration. Finally, please make sure the S3 bucket has a policy that allows data writes to it.
+2. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket of follow this guide. If you choose to provide your own S3 path to an existing bucket, the bucket must be in the same region as set in the [Data dump job](#data-dump-job). Finally, please make sure the S3 bucket has a policy that allows data writes to it.
+3. Set a lifecycle policy, that deletes objects older than few days (default is 7 in our policy, but can be changed). This is a failsafe mechanism, that allows us to retain historical data even if a [Sync job](#sync-job) fails and gives us a few days to fix the issue.
 
 ```sh
 $ aws s3api create-bucket --bucket <BUCKET_NAME>
-```
 
-To limit the data stored in this bucket, you can modify the object lifecycle
-
-```sh
 $ aws s3api put-bucket-lifecycle-configuration  \
     --bucket <BUCKET_NAME>  \
-    --lifecycle-configuration file:/`pwd`/aws-datapipelines/bucket_lifecycle.json
+    --lifecycle-configuration file://bucket_lifecycle.json
 ```
 
-### Step 2: Data dump job
+## Data dump job
 
-Choose one option from the available solutions:
+This job is intended to be run on the APP side. It collects all data from given tables and stores them in a compressed CSVs in your S3 bucket.
 
-- [AWS Data pipelines](aws-datapipelines/README.md)
-- [AWS Batch](aws-batch/README.md)
-- [OpenShift CronJob deployed on the application side](openshift-crc-side/README.md)
+Specification of this job is available in the `openshift-crc` folder.
 
-Follow the guidelines. As a result you should end up with a periodically invoked job, that would dump the desired data into S3.
+### Step 1: Populate secrets for dump job
+
+The job assumes you have a PostgreSQL secret `postgresql` available in your OpenShift project. Next you are required to have another secret available to you, called `aws`. It contains the AWS credentials the job can use:
+
+```sh
+$ oc create secret generic aws \
+    --from-literal=access-key-id=<CREDENTIALS>
+    --from-literal=secret-access-key=<CREDENTIALS>
+```
+
+Both these secrets are described in the `setup.yaml` as well.
+
+### Step 2: Deploy dump cron job
+
+```sh
+$ oc process -f openshift-crc/deploy.yaml \
+    -p S3_OUTPUT=<s3://bucket/path> \
+    -p TABLES="<space separated list of tables to dump>" \
+    -p PGHOST=<PostgreSQL hostname (default: postgresql)> \
+    -p PGPORT=<PostgreSQL port (default: 5432)> \
+  | oc create -f -
+```
+
+As a result a cron job is defined. It is set to run daily. On each run it would collect each table from `TABLES` in your database and save it as a `<table>.csv.gz` in `s3://bucket/path/<DATE>/`.
 
 ## Sync job
 
 Second part of the Egress is to get the data in Amazon S3 over to Datahub's Ceph. To do so, we define a OpenShift cron job, that would sync content of your buckets using [MinIO client](https://docs.min.io/docs/minio-client-quickstart-guide.html).
 
-### Prerequisites
+Specification of this job is available in the `openshift-dh` folder.
 
-OpenShift's `oc` client is required to be installed and configured.
+### Step 1: Populate secrets for sync job
 
-### Step 1: Set and deploy secrets
-
-Follow the prescription in `openshift/setup.yaml` template, or use the cli:
-
-```sh
-# change setup.yaml
-$ oc process -f openshift/setup.yaml | oc create -f -
-```
-
-or
+Follow the prescription in `openshift-dh/setup.yaml` template, or use the cli:
 
 ```sh
 $ oc create secret generic egress-input \
@@ -89,17 +92,17 @@ The `S3_PATH` denotes the path for a bucket or its subfolder:
 - It can be simply a bucket name: `my_bucket`
 - It can also be a relative path to a folder within this bucket `my_bucket/folder_in_top_level/target_folder`
 
-### Step 2: Deploy Egress Cron job
+### Step 2: Deploy sync cron job
 
 And finally, deploy the Kubernetes cron job. This job uses a [MinIO client](https://docs.min.io/docs/minio-client-quickstart-guide.html) and performs a `mirror` operation to sync S3 bucket to Ceph. Both input and output urls and paths are determined based on the secrets from previous step.
 
 ```sh
-$ oc process -f openshift/deploy.yaml | oc create -f -
+$ oc process -f openshift-dh/deploy.yaml | oc create -f -
 ```
 
 ### Run
 
-The `openshift/deploy.yaml` describes a cron job. By default this job is set to run daily. Once this job is executed, you should receive log containing all the synced files:
+The `openshift-dh/deploy.yaml` describes a cron job. By default this job is set to run daily. Once this job is executed, you should receive log containing all the synced files:
 
 ```
 Added `input` successfully.
