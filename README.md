@@ -41,7 +41,7 @@ The job assumes you have a PostgreSQL secret `postgresql` available in your Open
 
 ```sh
 $ oc create secret generic aws \
-    --from-literal=access-key-id=<CREDENTIALS>
+    --from-literal=access-key-id=<CREDENTIALS> \
     --from-literal=secret-access-key=<CREDENTIALS>
 
 secret/aws created
@@ -66,6 +66,20 @@ cronjob.batch/egress-cj created
 
 As a result a cron job is defined. It is set to run daily. On each run it would collect each table from `TABLES` in your database and save it as a `<table>.csv.gz` in `s3://bucket/path/<DATE>/`.
 
+### Run
+
+Once the cron job is run, you should be able to query for it's logs. It should look like this:
+
+```sh
+$ oc log `oc get pods -o=name --selector=job-name | tail -1`
+
+Table 'tally_snapshots': Data collection started.
+Table 'tally_snapshots': Dump uploaded to intermediate storage.
+Table 'subscription_capacity': Data collection started.
+Table 'subscription_capacity': Dump uploaded to intermediate storage.
+Success.
+```
+
 ## Sync job
 
 Second part of the Egress is to get the data in Amazon S3 over to Datahub's Ceph. To do so, we define a OpenShift cron job, that would sync content of your buckets using [MinIO client](https://docs.min.io/docs/minio-client-quickstart-guide.html).
@@ -78,17 +92,17 @@ Follow the prescription in `openshift-dh/setup.yaml` template, or use the cli:
 
 ```sh
 $ oc create secret generic egress-input \
-    --from-literal=url=<S3_ENDPOINT>
-    --from-literal=path=<S3_PATH>
-    --from-literal=access-key-id=<CREDENTIALS>
+    --from-literal=url=<S3_ENDPOINT> \
+    --from-literal=path=<S3_PATH> \
+    --from-literal=access-key-id=<CREDENTIALS> \
     --from-literal=secret-access-key=<CREDENTIALS>
 
 secret/egress-input created
 
 $ oc create secret generic egress-output \
-    --from-literal=url=<S3_ENDPOINT>
-    --from-literal=path=<S3_PATH>
-    --from-literal=access-key-id=<CREDENTIALS>
+    --from-literal=url=<S3_ENDPOINT> \
+    --from-literal=path=<S3_PATH> \
+    --from-literal=access-key-id=<CREDENTIALS> \
     --from-literal=secret-access-key=<CREDENTIALS>
 
 secret/egress-output created
@@ -119,8 +133,9 @@ cronjob.batch/egress-cj created
 
 The `openshift-dh/deploy.yaml` describes a cron job. By default this job is set to run daily. Once this job is executed, you should receive log containing all the synced files:
 
-```
-oc log
+```sh
+$ oc log `oc get pods -o=name --selector=job-name | tail -1`
+
 Added `input` successfully.
 Added `output` successfully.
 `input/tcoufal/2019-11-21/subscription_capacity.csv.gz` -> `output/DH-SECURE-USIR/2019-11-21/subscription_capacity.csv.gz`
