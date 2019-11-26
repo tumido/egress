@@ -10,6 +10,8 @@ Data egress service is intended to export data from Amazon RDS to Data Hub on re
 2. OpenShift `CronJob` on the application cluster side snapshots the database into Amazon S3 as CSV dumps.
 3. OpenShift `CronJob` on the target network side synchronizes S3 to Ceph.
 
+![Data flow](../media/dataflow.png?raw=true)
+
 ## Prerequisites
 
 Outward facing intermediate storage in the project is a necessity. Please set up an S3 bucket:
