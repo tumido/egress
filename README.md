@@ -17,7 +17,7 @@ Data egress service is intended to export data from Amazon RDS to Data Hub on re
 Outward facing intermediate storage in the project is a necessity. Please set up an S3 bucket:
 
 1. You must have the [AWS CLI](https://github.com/aws/aws-cli) installed and configured.
-2. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket of follow this guide. If you choose to provide your own S3 path to an existing bucket, the bucket must be in the same region as set in the [Data dump job](#data-dump-job). Finally, please make sure the S3 bucket has a policy that allows data writes to it.
+2. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket of follow this guide. Please make sure the S3 bucket has a policy that allows writing of the data with the credentials you provide to the cron job.
 3. Set a lifecycle policy, that deletes objects older than few days (default is 7 in our policy, but can be changed). This is a failsafe mechanism, that allows us to retain historical data even if a [Sync job](#sync-job) fails and gives us a few days to fix the issue.
 
 ```sh
