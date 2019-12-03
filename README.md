@@ -17,14 +17,14 @@ Data egress service is intended to export data from Amazon RDS to Data Hub on re
 Outward facing intermediate storage in the project is a necessity. Please set up an S3 bucket:
 
 1. You must have the [AWS CLI](https://github.com/aws/aws-cli) installed and configured.
-2. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket of follow this guide. Please make sure the S3 bucket has a policy that allows writing of the data with the credentials you provide to the cron job and respects the rules listed bellow.
+2. See [here](http://docs.aws.amazon.com/AmazonS3/latest/UG/CreatingaBucket.html) for instructions on how to create an S3 bucket or follow this guide. Please make sure the S3 bucket has a policy that allows writing of the data with the credentials you provide to the cron job and respects the rules listed bellow.
 
 Your S3 bucket is required to follow certain security rules:
 
 1. **A separate bucket for this purpose only is required.** Please don't use any shared buckets.
-2. **A dedicate set of keys for the [Sync job](#sync-job) is required.** Since these credentials are shared with team owning the Sync job, it should allow access to this bucket only.
+2. **A dedicated set of keys for the [Sync job](#sync-job) is required.** Since these credentials are shared with team owning the Sync job, it should allow access to this bucket only.
 3. **Ensure the bucket has AES encryption enabled.**
-4. **Set a lifecycle policy, that deletes objects older than 14 days.** This is a failsafe mechanism, that allows us to retain historical data even if a sync job fails and gives us a few days to fix the issue.
+4. **Set a lifecycle policy, that deletes objects older than 14 days.** This is a failsafe mechanism, that allows us to retain historical data even if a sync job fails and gives us a few days to fix the issue. This also ensures that we don't keep data stored longer than our customer SLA.
 
 To create a bucket via CLI (and upload the policies that ensures 3. and 4. rules are respected):
 
