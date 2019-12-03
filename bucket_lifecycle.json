@@ -2,9 +2,9 @@
     "Rules": [
       {
         "Expiration": {
-          "Days": 7
+          "Days": 14
         },
-        "ID": "Delete objects older than 7 days",
+        "ID": "Delete objects older than 14 days",
         "Prefix": "",
         "Status": "Enabled"
       }
