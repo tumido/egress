@@ -84,7 +84,7 @@ objects:
                 set -e;
                 for table in $TABLES; do
                   echo "Table '${table}': Data collection started.";
-                  psql -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE -c "COPY $table TO STDOUT WITH CSV HEADER" |
+                  psql -h $PGHOST -p $PGPORT -U $PGUSER $PGDATABASE -c "COPY $table TO STDOUT CSV" |
                   gzip -9 |
                   aws s3 cp - ${S3_OUTPUT}/$(date -I)/${table}.csv.gz;
                   echo "Table '${table}': Dump uploaded to intermediate storage.";
