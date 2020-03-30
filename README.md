@@ -6,7 +6,7 @@ Data egress service is intended to export data from Amazon RDS to Data Hub on re
 
 ## Process Overview
 
-1. Input data are expected to be located in a Amazon RDS, presumably PostgreSQL.
+1. Let's presume the input data is located in a Amazon RDS or PostgreSQL database pod.
 2. OpenShift `CronJob` on the application cluster side snapshots the database into Amazon S3 as CSV dumps.
 3. OpenShift `CronJob` on the target network side synchronizes S3 to Ceph.
 
@@ -47,7 +47,7 @@ $ aws s3api put-bucket-encryption \
 
 This job is intended to be run on the APP side. It collects all data from given tables and stores them in a compressed CSVs in your S3 bucket.
 
-Specification of this job is available in the `openshift-crc` folder.
+Specification of this job is available in the `openshift-crc` folder. Please use this script rather as a guide than a given solution. What is important is the result - populated S3 bucket. How your team achieves that is totally up to you.
 
 ### Step 1: Populate secrets for dump job
 
@@ -95,6 +95,12 @@ Success.
 ```
 
 ## Sync job
+
+⚠️ **This is a strip-down version of the actual workflow used by the DataHub team.** ⚠️
+
+This is just an example. For a full, real life implementation please head to our [GitLab `dh-argo-workfolows`  repository](https://gitlab.cee.redhat.com/data-hub/dh-argo-workflows/). There you can find [Argo](https://argoproj.github.io/projects/argo/) workflows that use very similar approach as the one described bellow.
+
+---
 
 Second part of the Egress is to get the data in Amazon S3 over to Datahub's Ceph. To do so, we define a OpenShift cron job, that would sync content of your buckets using [MinIO client](https://docs.min.io/docs/minio-client-quickstart-guide.html).
 
